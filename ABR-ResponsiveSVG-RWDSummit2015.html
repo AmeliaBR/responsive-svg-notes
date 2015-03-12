@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html><head>
+    <title>Scaling Up (and Down) SVG</title>
+    <meta charset="utf-8" />
+    <style media="all">
+        h1, h2, h3, header, footer {
+            text-align: center;
+        }    
+        li {
+            margin-bottom: 0.5em;
+        }
+        li li {
+            margin-bottom: 0.1em;
+        }
+        ul, ol {
+            margin: 0.25em 0;
+        }
+        header li, footer li {
+            display: block;
+        }
+        header li li, footer li li{
+            font-size: inherit;
+            margin: 0.5em auto;
+        }
+        header ul, footer ul {
+            display: block;
+            padding: 0;
+        }
+        footer, section {
+            position: relative;
+            counter-increment: slide;
+        }
+        footer::before, section::before {
+            content: counter(slide);
+            
+            display: block;
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 0.5em;
+            height: 1em;
+            width: 1em;
+            color: gray;
+        }
+    </style>
+    <style media="print">
+        header, section, footer {
+            border-bottom: double dimgray 5px;
+            padding: 1em 0;
+            break-inside: avoid;
+        }
+        a:link, a:visited {
+           color: inherit;
+           text-decoration: none;
+        }
+        a:link::after {
+            content: " (" attr(href) ")";
+        }
+        a.literal::after {
+            content: normal;
+        }
+    </style>
+    <style media="screen">
+        body {
+            background-color: #666;
+            margin: 0; padding: 0;
+            font-family: Verdana, Tahoma, sans-serif;
+        }
+        header, section, footer {
+            display: block;
+            box-sizing: border-box;
+            width: calc(96vw - 20px);
+            min-height: 96vh;
+            padding: 1em;
+            border-radius: 1em;
+            margin: 2vh 2vw;
+            background-image: linear-gradient(to bottom right, lightYellow 20%, darkSeaGreen);
+            box-shadow: 0.2em 0.3em 0.5em 0 black;
+        }
+        ul {
+            padding-left: 3em;
+        }
+        @media (min-height: 40em) {
+            header, section, footer {
+                height: 96vh;
+            } 
+            section > ul, footer > ul {
+                height: calc(100% - 5em);
+                overflow: auto;
+            }
+            header ul {
+                height: calc(100% - 10em);
+                overflow: auto;
+            }
+        }
+        @media (min-width: 30em) {
+            :root {
+                font-size: 150%;
+            }
+            li li {
+                font-size: 80%;
+            }
+        }
+        @media (min-width: 40em) AND (min-height: 40em) {
+            :root {
+                font-size: 200%;
+            }
+        }
+        .control {
+            display: block;
+            position: fixed;
+            background-color: rgba(100%, 100%, 75%, 0.5); 
+            font-size: 80%;
+            padding: 0.25em 0.5em;
+            bottom: 0;
+            right: 0;
+            z-index: 1000;
+        }
+        .control input[type="checkbox"] {
+            height: 1em;
+            width: 1em;
+            border-radius: 25%;
+            box-sizing: border-box;
+            font-size: inherit;
+        }
+        :not(a):focus {
+            outline: none;
+            border-right: solid seaGreen;
+        }
+    </style>
+    <style id="interactive-styles" disabled="disabled" media="only none">
+        :focus ~ li, :focus + ul, .contains-focus ~ li, .contains-focus + ul {
+            opacity: 0.05;
+        }
+        li ul {
+            height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: opacity 0.5s;
+        }
+        li:focus ul, .contains-focus > ul {
+            height: auto;
+            opacity: 1;
+        }
+    </style>                
+</head><body>
+    
+    <header>
+        <h1>Scaling Up (and Down) SVG</h1>
+        <h2>Using Scalable Vector Graphics on Responsive Web Pages</h2>
+        <ul>
+            <li>Amelia Bellamy-Royds</li>
+            <li>RWD Summit 2015</li>
+            <li>12 March 2015</li>
+            <li>Follow along with demos: <a class="literal" href="http://codepen.io/collection/njbPRv/">http://codepen.io/collection/njbPRv/</a></li>
+        </ul>
+    </header>
+    
+    <section>
+        <h2>Responsive SVG</h2>
+        <ul>
+            <li>Chris Coyier covered: 
+                <ul>
+                    <li><em>What</em> is SVG?</li>
+                    <li><em>Why</em> is SVG good for RWD?</li>
+                </ul>            
+            </li>
+            <li>This talk: <em>how</em> to use SVG in responsive sites
+                <ul>
+                    <li>How to make your SVG look good at any size</li>
+                    <li>First: SVG scaling basics</li>
+                    <li>Then: Advanced scaling effects</li>
+                </ul>            
+            </li>
+            <li>I <em>won't</em> cover using JavaScript to re-scale graphics
+                <ul>
+                    <li>Slows down your page</li>
+                    <li>Can't be used in SVG images</li>
+                </ul>            
+            </li>
+            <li>I <em>will</em> talk about
+                <ul>
+                    <li>Core SVG scaling options</li>
+                    <li>Using CSS media queries</li>
+                </ul>            
+            </li>
+        </ul>
+    </section>
+    
+    <section>
+        <h2>Images vs. Documents</h2>
+        <ul>
+            <li>Graphics and text respond to screen size differently</li>
+            <li>Images: constant aspect ratio
+                <ul>
+                    <li>shrink width = shrink height</li>
+                    <li>expand width = expand height</li>
+                </ul>
+            </li>
+            <li>Text: constant area <small>(approximately)</small>
+                <ul>
+                    <li>shrink width = expand height</li>
+                    <li>Text wraps onto new lines</li>
+                </ul>
+            </li>
+            <li>SVG scales like an image
+                <ul>
+                    <li><strong>But only if you say so!</strong></li>
+                </ul>
+            </li>
+        </ul>
+    </section>
+    
+    <section>
+        <h2>Scaling SVG Basics: the <code>viewBox</code></h2>
+        <ul>
+            <li>Most RWD: 
+                <ul>
+                    <li>Browser has a certain size</li>
+                    <li>You adjust to fit</li>
+                </ul>
+            </li>
+            <li>SVG <code>viewBox</code>:
+                <ul>
+                    <li>You declare what size your graphic is designed for</li>
+                    <li>The browser scales to fit</li>
+                    <li><a href="http://codepen.io/AmeliaBR/pen/PwdVWL?editors=110">DEMO</a></li>
+                </ul>
+            </li>
+            <li>No <code>viewBox</code> = no scaling:
+                <ul>
+                    <li>Works like CSS absolute positioning</li>
+                    <li>Percentages scale, nothing else</li>
+                </ul>
+            </li>
+            <li>WT# is a <code>viewBox</code>?
+                <ul>
+                    <li>Attribute on the <code>&lt;svg&gt;</code></li>
+                    <li>Four numbers: x, y, width, height</li>
+                    <li>x,y: top-left corner coordinates</li>
+                    <li>width,height: # of px to fit in available space</li>
+                </ul>
+            </li>
+            <li>Can I haz <code>viewBox</code>?
+                <ul>
+                    <li>Some graphics programs will create automatically (Inkscape won't)</li>
+                    <li>Use px for your dimensions</li>
+                    <li><code>&lt;svg viewBox="0,0 w,h" &gt;</code></li>
+                    <li>For x,y: use 0,0 (if you're using graphics program)</li>
+                    <li>For w,h: use the width &amp; height in px</li>
+                    <li>LIVE DEMO: Getting a <code>viewBox</code> in Inkscape</li>
+                </ul>
+            </li>
+        </ul>
+    </section>
+    
+    <section>
+        <h2>SVG Images</h2>
+        <ul>
+            <li>SVG Image = SVG used as an image file
+                <ul>
+                    <li>HTML <code>&lt;img&gt;</code> or <code>CSS background-image</code></li>
+                    <li>Most layout/scaling issues work the same with HTML <code>&lt;object&gt;</code></li>
+                    <li>LIVE DEMO: Using your Inkscape SVG in a web page</li>
+                </ul>
+            </li>            
+            <li>Size the image with CSS, browser handles the scaling
+                <ul>
+                    <li>LIVE DEMO: No viewBox = no scaling in IE</li>
+                    <li>LIVE DEMO: No height, width, viewBox = no scaling anywhere</li>
+                    <li>LIVE DEMO: No height, width = arbitrary default sizes</li>
+                </ul>
+            </li>
+            <li>What if you don't know the aspect ratio?
+                <ul>
+                    <li>If aspect ratio doesn't match, browser centers and fits</li>
+                    <li>If you only specify height <em>or</em> width, other dimension auto-scales</li>
+                </ul>
+            </li>
+            <li>The center/fit behavior is controlled by <code>preserveAspectRatio</code> attribute
+                <ul>
+                    <li>E.g.: <code>preserveAspectRatio="xMinYMax slice"</code></li>
+                    <li>E.g.: <code>preserveAspectRatio="none"</code></li>
+                    <li><a href="https://css-tricks.com/scale-svg/">Find out more</a></li>
+                </ul>
+            </li>
+            <li>Make image responsive!
+                <ul>
+                    <li>Percentages or viewport units</li>
+                    <li>Media queries</li>
+                </ul>
+            </li>
+        </ul>
+    </section>
+    
+    <section>
+        <h2>Inline SVG</h2>
+        <ul>
+            <li>Inline SVG = SVG markup inside your HTML file
+                <ul>
+                    <li>Same document, same stylesheets</li>
+                    <li><code>&lt;svg&gt;</code> element is both canvas and content</li>
+                </ul>
+            </li>
+            <li>If creating your SVG in a graphics program:
+                <ul>
+                    <li>Give it a viewBox</li>
+                    <li>Optimize it</li>
+                    <li>PHP / other server-side includes</li>
+                    <li>AJAX for browser caching</li>
+                    <li>Good old copy &amp; paste</li>
+                    <li><a href="http://codepen.io/AmeliaBR/pen/PwdVWL?editors=110">Same Demo, edit it!</a></li>
+                </ul>
+            </li>
+            <li>Set <em>both</em> height and width with CSS 
+                <ul>
+                    <li>&amp; make responsive!</li>
+                    <li>no viewBox = no scaling, in any browser</li>
+                    <li>height &amp; width attributes are defaults only</li>
+                    <li>LIVE DEMO: playing around with CodePen</li>
+                </ul>
+            </li>
+            <li>If you set height <em>or</em> width 
+                <ul>
+                    <li>Some browsers adjust according to viewBox</li>
+                    <li>Others don't (IE, Safari, older Chrome, really old Firefox)</li>
+                    <li>Use the <code>padding-bottom</code> hack to scale height according to width</li>
+                    <li><a href="https://css-tricks.com/scale-svg/">Find out more</a></li>
+                </ul>
+            </li>
+        </ul>
+    </section>
+    
+    <section>
+        <h2>Icons &amp; Symbols</h2>
+        <ul>
+            <li>SVG <code>&lt;symbol&gt;</code> element = reusable graphic</li>
+            <li>Draw a symbol with a <code>&lt;use&gt;</code> element
+                <ul>
+                    <li>The use element can be in a different SVG in the same document</li>
+                    <li>Specs: the use element could be in a different document</li>
+                    <li>Real world: no IE support, styles buggy in other browsers</li>
+                </ul>
+            </li>
+            <li>Use AJAX to get your symbols into your main document
+                <ul>
+                    <li><em>If</em> they are used on many pages</li>
+                    <li>Or, directly include in HTML markup</li>
+                </ul>
+            </li>
+            <li>Symbols must be within an <code>&lt;svg&gt;</code> element
+                <ul>
+                    <li>Insert symbols in first SVG (the won't draw directly)</li>
+                    <li>Put symbols in their own SVG, then hide with CSS</li>
+                    <li>Don't use <code>display: none</code> (older Firefox bugs)</li>
+                </ul>
+            </li>
+            <li>The <code>&lt;symbol&gt;</code> has a <code>viewBox</code>, so your SVG doesn't need one</li>
+            <li>Inline markup is short &amp; sweet
+                <ul>
+                    <li><code>&lt;svg class="icon"&gt;&lt;use xlink:href="#icon" /&gt;&lt;/svg&gt;</code></li>
+                    <li>The symbol will stretch to fit the SVG</li>
+                    <li><a href="http://codepen.io/AmeliaBR/pen/GgXzJY">DEMO</a></li>
+                </ul>
+            </li>
+            <li>Change icon size using CSS height and width on the svg.icon
+                <ul>
+                    <li>Must set both height and width, in all browsers</li>
+                    <li>Use classes if icons have different aspect ratios</li>
+                    <li>Tip: Use <code>em</code> units for easy scaling with <code>font-size</code></li>
+                </ul>
+            </li>
+            <li>End of SVG Scaling Basics: 
+                <ul>
+                    <li>QUESTIONS?</li>
+                </ul>
+            </li>
+        </ul>
+    </section>
+    
+    <section>
+        <h2>Media Queries and SVG</h2>
+        <ul>
+            <li>Slimming Down when you're Scaling Up</li>
+            <li>The viewBox scales <em>everything</em> equally
+                <ul>
+                    <li>All units</li>
+                    <li>Font size</li>
+                    <li>Stroke (lines/outline) width</li>
+                </ul>
+            </li>
+            <li>Result: overbearing text, thick lines
+                <ul>
+                    <li><a href="http://codepen.io/AmeliaBR/pen/NPLvPz">DEMO</a></li>
+                </ul>
+            </li>
+            <li>Media queries can cancel out the effect
+                <ul>
+                    <li>Make <code>font-size</code> or <code>stroke-width</code> <em>smaller</em> as SVG gets <em>larger</em></li>
+                    <li>Text and strokes will still scale up, <em>but not as much</em></li>
+                    <li>Consider accessibility: Don't make things <em>too</em> small</li>
+                    <li><a href="http://codepen.io/AmeliaBR/pen/NPLvPz">SAME DEMO, new options</a></li>
+                </ul>
+            </li>
+            <li>What is the media for SVG?
+                <ul>
+                    <li>Image or object: the SVG region only</li>
+                    <li>Inline: the entire page/frame</li>
+                    <li>Always: the area for the entire <em>document</em></li>
+                </ul>            
+            </li>
+        </ul>
+    </section>
+    
+    <section>
+        <h2>Selective Scaling</h2>
+        <ul>
+            <li>Instead of media query breakpoints, just <em>don't scale</em> some parts</li>
+            <li>No viewBox = no scaling
+                <ul>
+                    <li>Nested SVG elements (<em>with</em> viewBox) contain the parts you want to scale</li>
+                    <li>But no viewBox = no auto-scaling aspect ratio for images</li>
+                </ul>
+            </li>
+            <li>Percentages scale position but not size
+                <ul>
+                    <li>Can't do complex shapes with percentages</li>
+                    <li>Weird for dimensions not linked to width/height</li>
+                    <li>No aspect ratio control</li>
+                    <li>Requires math</li>
+                </ul>
+            </li>
+            <li>Best for map/chart annotations 
+                <ul>
+                    <li><a href="http://codepen.io/AmeliaBR/pen/KwBjeB">DEMO</a></li>
+                </ul>
+            </li>
+        </ul>
+    </section>
+    
+    <section>
+        <h2>Shrink &amp; Simplify</h2>
+        <ul>
+            <li>Media queries remove / replace parts of graphic as you scale down</li>
+            <li>Large, medium, &amp; small logos in one image file
+                <ul>
+                    <li>Not an image sprite!</li>
+                    <li>Works as an HTML image or as CSS background image</li>
+                </ul>
+            </li>
+            <li>Streamline shapes, simplify effects, remove text
+                <ul>
+                    <li><a href="http://codepen.io/AmeliaBR/pen/jEvYXj">DEMO</a></li>
+                </ul>
+            </li>
+            <li>Media queries <em>inside</em> the SVG file
+                <ul>
+                    <li>In a <code>&lt;style&gt;</code> block</li>
+                    <li>Main page CSS only controls the image width/height</li>
+                    <li><a href="https://s3-us-west-2.amazonaws.com/s.cdpn.io/91525/logo-details.svg">View source</a></li>
+                </ul>
+            </li>
+            <li>Media queries <em>cannot</em> change aspect ratio
+                <ul>
+                    <li>viewBox is not a CSS property</li>
+                    <li>This <em>may</em> change in SVG 2</li>
+                </ul>
+            </li>
+            <li>Other layout control is limited to CSS transforms
+                <ul>
+                    <li>This <em>will</em> change in SVG 2</li>
+                </ul>
+            </li>
+            <li>To significantly change design, show/hide separate versions</li>
+            <li>More examples &amp; explanation:
+                <ul>
+                    <li><a href="http://tympanus.net/codrops/2014/08/19/making-svgs-responsive-with-css/">Sara Souiedan on Codrops</a></li>
+                    <li><a href="http://www.smashingmagazine.com/2014/03/05/rethinking-responsive-svg/">Ilya Pukhalski in Smashing Magazine</a></li>
+                </ul>
+            </li>
+        </ul>
+    </section>
+    
+    <section>
+        <h2>Complex Scaling Patterns</h2>
+        <ul>
+            <li>Inline SVG &amp; no viewBox = CSS control of aspect ratio</li>
+            <li>Nested SVGs and percentages for scaling</li>
+            <li>Details dropped / swapped with media queries</li>
+            <li>Complexity is up to you
+                <ul>
+                    <li>but it does get complex!</li>
+                    <li><a href="http://codepen.io/AmeliaBR/pen/bNxYRW?editors=110">DEMO</a></li>
+                    <li><a href="http://codepen.io/AmeliaBR/pen/adJtq?editors=110">More examples</a></li>
+                </ul>
+            </li>
+        </ul>
+    </section>
+    
+    <section>
+        <h2>SVG &amp; Text Wrapping</h2>
+        <ul>
+            <li>SVG text is absolutely positioned
+                <ul>
+                    <li><em>Not</em> text-in-a-box</li>
+                    <li>Does not wrap to a new line if it runs out of room</li>
+                    <li>This <em>will</em> change in SVG 2</li>
+                </ul>
+            </li>
+            <li>Need to explicitly position multi-line text
+                <ul>
+                    <li><a href="http://codepen.io/AmeliaBR/pen/wBxdpM">Hypothetical Demo for line breaks controlled with media queries</a></li>
+                    <li>Does not work in Firefox</li>
+                </ul>
+            </li>
+            <li>Practical solution: Two versions of text, and swap</li>
+            <li>For lots of text: use HTML
+                <ul>
+                    <li>Absolutely positioned divs over top of SVG</li>
+                    <li>SVG <code>&lt;foreignObject&gt;</code> element: no IE support yet, buggy in other browsers</li>
+                </ul>
+            </li> 
+        </ul>
+    </section>
+    
+    <section>
+        <h2>Summary: Basics</h2>
+        <ul>
+            <li>For most SVG, <code>viewBox</code> is all you need</li>
+            <li>For SVG-as-image (or object):
+                <ul>
+                    <li>Use <code>viewBox</code> + <code>width</code> + <code>height</code> attributes on the root <code>&lt;svg&gt;</code> element</li>
+                    <li>Use preserveAspectRatio to control alignment when image size doesn't match</li>
+                    <li>Browser will auto scale height to match width or vice versa</li>
+                </ul>
+            </li>
+            <li>For large inline SVG:
+                <ul>
+                    <li>Use <code>viewBox</code> on the <code>&lt;svg&gt;</code> element</li>
+                    <li>Use CSS for height and width</li>
+                    <li>Use a padding-bottom hack if necessary to get height to scale with width</li>
+                </ul>
+            </li>
+            <li>For inline SVG icons:
+                <ul>
+                    <li>Use <code>&lt;symbol&gt;</code> element with <code>viewBox</code> attribute</li>
+                    <li>Inline markup: <code>&lt;svg class="icon"&gt;&lt;use xlink:href="#icon" /&gt;&lt;/svg&gt;</code></li>
+                    <li>Use CSS classes/em units to set height and width</li>
+                </ul>
+            </li>
+            <li>More examples &amp; explanation:
+                <ul>
+                    <li><a class="literal" href="https://css-tricks.com/scale-svg/">https://css-tricks.com/scale-svg/</a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </section>
+    
+    <section>
+        <h2>Summary: Advanced</h2>
+        <ul>
+            <li>Use media queries: 
+                <ul>
+                    <li>To make text and strokes <em>smaller</em> (relatively) as SVG gets <em>larger</em></li>
+                    <li>To remove extra details or swap in simplified versions</li>
+                    <li>With breakpoints based on the <em>document</em> size</li>
+                </ul>
+            </li>
+            <li>Use nested SVGs:
+                <ul>
+                    <li>To create complex scaling effects</li>
+                    <li>If you want to get fancy</li>
+                    <li>With <em>no</em> <code>viewBox</code> on outer SVG</li>
+                    <li>With percentages for position &amp; sizing of nested SVG</li>
+                    <li>With percentages for position of non-scaling content</li>
+                </ul>
+            </li>
+            <li>Use SVG 2:
+                <ul>
+                    <li>To make this all easier!</li>
+                    <li>&hellip;eventually.</li>
+                </ul>
+            </li>
+        </ul>
+    </section>
+    
+    <footer>
+        <h2>About Me</h2>
+        <ul>
+            <li>Amelia Bellamy-Royds</li>
+            <li>B.Sc., M.J., SVG Evangelist</li>
+            <li>amelia.bellamy.royds@gmail.com</li>
+            <li><a class="literal" href="http://codepen.io/AmeliaBR/">http://codepen.io/AmeliaBR/</a></li>
+            <li style="padding-top: 2em">I write Books!</li>
+            <li><a href="http://shop.oreilly.com/product/0636920032335.do"><cite>SVG Essentials, 2nd Edition</cite></a></li>
+            <li>Coming Soon: <cite>Using SVG with CSS3 and HTML5</cite></li>
+        </ul>
+    </footer>
+    <script>
+(function(){
+    var initialized = false;  
+    var interactiveStyles = document.getElementById("interactive-styles");
+    
+    var toggleLabel = document.createElement("label");
+    toggleLabel.setAttribute("class", "control");
+    document.body.id ="body";
+    toggleLabel.setAttribute("aria-controls", "body");
+    toggleLabel.textContent = "Tab to reveal";
+    
+    var toggle = document.createElement("input");
+    toggle.setAttribute("type", "checkbox");
+    toggle.addEventListener("change", toggleTabControl);
+    toggleLabel.insertBefore(toggle, null);
+    
+    document.body.insertBefore(toggleLabel, document.body.firstChild);
+    
+    function toggleTabControl(e){
+        var headingSelector = "h1, h2, h3", 
+            pointsSelector = "section > ul > li, section > ol > li, footer > ul > li";
+        
+        if (!e.target.checked){
+            interactiveStyles.setAttribute("disabled", "disabled");
+            interactiveStyles.setAttribute("media", "only none"); 
+                //because "disabled" doesn't work!
+            document.body.insertBefore(interactiveStyles, null); //force refresh
+            return;
+        }
+        
+        if (!initialized) {
+            //add tabIndex to bullet points
+            var points = document.querySelectorAll(headingSelector+", "+pointsSelector);
+            for (var i=0, n=points.length; i<n; i++) {
+                points[i].setAttribute("tabIndex", 0);
+            }
+
+            //ensure that focusing links doesn't mess up focus styles
+            var links = document.getElementsByTagName("a");
+            for (var i=0, n=links.length; i<n; i++) {
+                links[i].addEventListener("focus", focusIn);
+                links[i].addEventListener("blur", focusOut);
+            }
+
+            //scroll slide into place whenever heading gets focus
+            var headings = document.querySelectorAll(headingSelector);
+            for (var i=0, n=headings.length; i<n; i++){
+                headings[i].addEventListener("focus", scrollSlide);
+            }
+        }
+        
+        interactiveStyles.removeAttribute("disabled");
+        interactiveStyles.setAttribute("media", "screen");
+        document.body.insertBefore(interactiveStyles, null); //force refresh
+    }
+    function focusIn(e){
+        var p = e.target.parentElement;
+        while ((p.tagName.toLowerCase() != "section") && 
+               (p != document.documentElement)) {
+            p.classList.add("contains-focus");
+            p = p.parentElement;
+        }
+    }
+    function focusOut(e){
+        var p = e.target.parentElement;
+        while ((p.tagName.toLowerCase() != "section") && 
+               (p != document.documentElement)) {
+            p.classList.remove("contains-focus");
+            p = p.parentElement;
+        }
+    }
+    function scrollSlide(e){
+        scrollTo(window.scrollX, e.target.parentElement.offsetTop - 10);
+    }
+})();
+    </script>
+</body></html>
