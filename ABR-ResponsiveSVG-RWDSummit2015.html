@@ -601,6 +601,8 @@
 (function(){
     var initialized = false;  
     var interactiveStyles = document.getElementById("interactive-styles");
+    var headingSelector = "h1, h2, h3", 
+        pointsSelector = "section > ul > li, section > ol > li, footer > ul > li";
     
     var toggleLabel = document.createElement("label");
     toggleLabel.setAttribute("class", "control");
@@ -615,9 +617,22 @@
     
     document.body.insertBefore(toggleLabel, document.body.firstChild);
     
+    function addTabIndex(selector) {
+        var points = document.querySelectorAll(selector);
+        for (var i=0, n=points.length; i<n; i++) {
+            points[i].setAttribute("tabIndex", 0);
+        }
+        return points;
+    }
+    
+    //add tabIndex to headings
+    //scroll slide into place whenever heading gets focus
+    var headings = addTabIndex(headingSelector);
+    for (var i=0, n=headings.length; i<n; i++){
+        headings[i].addEventListener("focus", scrollSlide);
+    }
+    
     function toggleTabControl(e){
-        var headingSelector = "h1, h2, h3", 
-            pointsSelector = "section > ul > li, section > ol > li, footer > ul > li";
         
         if (!e.target.checked){
             interactiveStyles.setAttribute("disabled", "disabled");
@@ -629,10 +644,7 @@
         
         if (!initialized) {
             //add tabIndex to bullet points
-            var points = document.querySelectorAll(headingSelector+", "+pointsSelector);
-            for (var i=0, n=points.length; i<n; i++) {
-                points[i].setAttribute("tabIndex", 0);
-            }
+            addTabIndex(pointsSelector);
 
             //ensure that focusing links doesn't mess up focus styles
             var links = document.getElementsByTagName("a");
@@ -640,12 +652,7 @@
                 links[i].addEventListener("focus", focusIn);
                 links[i].addEventListener("blur", focusOut);
             }
-
-            //scroll slide into place whenever heading gets focus
-            var headings = document.querySelectorAll(headingSelector);
-            for (var i=0, n=headings.length; i<n; i++){
-                headings[i].addEventListener("focus", scrollSlide);
-            }
+            initialized = true;
         }
         
         interactiveStyles.removeAttribute("disabled");
