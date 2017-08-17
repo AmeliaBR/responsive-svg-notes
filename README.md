@@ -1,5 +1,5 @@
 # responsive-svg-notes
-Presentation notes for my talk on SVG for responsive web sites at [RWD Summit 2015](http://environmentsforhumans.com/2015/responsive-web-design-summit/) on 12 March 2015.  [You can use RawGit to view online](https://cdn.rawgit.com/AmeliaBR/responsive-svg-notes/master/ABR-ResponsiveSVG-RWDSummit2015.html).
+Presentation notes for my talk on SVG for responsive web sites at [RWD Summit 2015](http://environmentsforhumans.com/2015/responsive-web-design-summit/) on 12 March 2015.  [View the slides](http://ameliabr.github.io/responsive-svg-notes/ABR-ResponsiveSVG-RWDSummit2015.html).
 
 __________________________________
 
